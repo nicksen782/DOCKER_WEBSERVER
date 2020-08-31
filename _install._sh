@@ -1,0 +1,189 @@
+#! /bin/sh
+
+##############################################################################
+# To install directly from the Github repo you can use one of these commmands:
+#
+# With wget:
+#   wget -O -  https://raw.githubusercontent.com/nicksen782/DOCKER_WEBSERVER/master/_install._sh | bash -s BUILDCREATESTART    8080 master GITUPDATE
+#   wget -O -  https://raw.githubusercontent.com/nicksen782/DOCKER_WEBSERVER/master/_install._sh | bash -s START               8080 master NOGITUPDATE
+#   wget -O -  https://raw.githubusercontent.com/nicksen782/DOCKER_WEBSERVER/master/_install._sh | bash -s STOP                8080 master NOGITUPDATE
+#   wget -O -  https://raw.githubusercontent.com/nicksen782/DOCKER_WEBSERVER/master/_install._sh | bash -s STOPREMOVECONTAINER 8080 master NOGITUPDATE
+#
+# With curl:
+#   curl -s -L https://raw.githubusercontent.com/nicksen782/DOCKER_WEBSERVER/master/_install._sh | bash -s BUILDCREATESTART    8080 master GITUPDATE
+#   curl -s -L https://raw.githubusercontent.com/nicksen782/DOCKER_WEBSERVER/master/_install._sh | bash -s START               8080 master NOGITUPDATE
+#   curl -s -L https://raw.githubusercontent.com/nicksen782/DOCKER_WEBSERVER/master/_install._sh | bash -s STOP                8080 master NOGITUPDATE
+#   curl -s -L https://raw.githubusercontent.com/nicksen782/DOCKER_WEBSERVER/master/_install._sh | bash -s STOPREMOVECONTAINER 8080 master NOGITUPDATE
+#
+# Local commands for use after initial install:
+#   bash <path_to_install>/_install._sh BUILDCREATESTART    8080 master GITUPDATE
+#   bash <path_to_install>/_install._sh START               8080 master NOGITUPDATE
+#   bash <path_to_install>/_install._sh STOP                8080 master NOGITUPDATE
+#   bash <path_to_install>/_install._sh STOPREMOVECONTAINER 8080 master NOGITUPDATE
+##############################################################################
+
+#############################
+# FUNCTIONS SECTION - START #
+#############################
+
+function func_git {
+	# git clone or git pull?
+	if [ -d "$APP_PATH" ]; then
+		echo
+		echo "******************************************"
+		echo "Directory exists. Updating the local repo."
+		echo "******************************************"
+		cd $APP_PATH
+		git reset --hard HEAD
+		git pull
+		cd ..
+	else
+		echo
+		echo "*******************************************"
+		echo "Directory does not exist. Doing 'git clone'"
+		echo "*******************************************"
+		git clone git@github.com:nicksen782/docker_webserver.git _docker_webserver
+		cd $APP_PATH
+		git config --local core.fileMode false
+		cd ..
+	fi
+
+	# Copy the _DockerControl script to the parent directory.
+	if [ -d "_DockerControl.sh" ]; then rm -f _DockerControl.sh ; fi
+	cp _docker_webserver/_DockerControl._sh _DockerControl.sh
+	chmod +x _DockerControl.sh
+
+	# Copy the index.php script to the parent directory.
+	if [ -d "index.php" ]; then rm -f index.php ; fi
+	cp _docker_webserver/index.php index.php
+
+	# Switch to the specifed branch?
+	echo
+	echo "*****************************"
+	echo "Using the $BRANCHNAME branch."
+	echo "*****************************"
+	cd $APP_PATH
+	CURRENTBRANCH=$(git rev-parse --symbolic-full-name --abbrev-ref HEAD)
+	if [ "$BRANCHNAME" != "$CURRENTBRANCH" ]; then git checkout $BRANCHNAME; else echo "Already on same branch"; fi
+	cd ..
+
+	# Set permissions for all files in this folder.
+	echo
+	echo "***********************"
+	echo "Fixing file permissions"
+	echo "***********************"
+	cd $APP_PATH
+	find . '(' -type f -exec chmod 666 {} ';' ')' -o '(' -type d -exec chmod 777 {} ';' ')'
+	cd ..
+}
+function func_stop {
+	# Stop existing container.
+	if [ "$(docker ps -a | grep docker_webserver_container)" ]; then
+		echo
+		echo "***************************"
+		echo "Stopping existing container"
+		echo "***************************"
+		docker stop docker_webserver_container && echo "Container stopped"
+	fi
+}
+function func_start {
+	# Stop existing container.
+	if [ "$(docker ps -a | grep docker_webserver_container)" ]; then
+		echo
+		echo "******************"
+		echo "Starting container"
+		echo "******************"
+		docker start docker_webserver_container && echo "Container started"
+	fi
+}
+function func_remove {
+	# Remove existing container.
+	if [ "$(docker ps -a | grep docker_webserver_container)" ]; then
+		echo
+		echo "***************************"
+		echo "Removing existing container"
+		echo "***************************"
+		docker rm docker_webserver_container && echo "Container removed"
+	fi
+}
+function func_DOCKER_BUILDCREATESTART {
+	# Stop existing container.
+	func_stop
+
+	# Remove existing container.
+	func_remove
+
+	# Build the Docker container.
+	echo
+	echo "******************"
+	echo "Building container"
+	echo "******************"
+	docker build --tag docker_webserver:latest .
+	CMD="docker create --mount type=bind,source=\"$HOST_PATH\",target=/var/www/site/MOUNT -p $PORTNUMBER:80 --name docker_webserver_container docker_webserver"
+	eval $CMD
+
+	# Start the container.
+	func_start
+
+	echo
+	echo "You can access via URL: http://127.0.0.1:$PORTNUMBER/"
+	echo
+}
+function func_DOCKER_STOPREMOVECONTAINER {
+	# Stop existing container.
+	func_stop
+
+	# Remove existing container.
+	func_remove
+
+	echo
+	echo "THE DOCKER CONTAINER HAS BEEN STOPPED AND REMOVED."
+	echo
+}
+
+###########################
+# FUNCTIONS SECTION - END #
+###########################
+
+# Save command arguments.
+COMMAND=$1
+PORTNUMBER=$2
+BRANCHNAME=$3
+GITUPDATE=$4
+
+# Make sure that all arguments were provided.
+if [[ $COMMAND    == "" ]]; then echo "Missing arg #1: COMMAND"   ; exit; fi;
+if [[ $PORTNUMBER == "" ]]; then echo "Missing arg #2: PORTNUMBER"; exit; fi;
+if [[ $BRANCHNAME == "" ]]; then echo "Missing arg #3: BRANCHNAME"; exit; fi;
+if [[ $GITUPDATE  == "" ]]; then echo "Missing arg #4: GITUPDATE" ; exit; fi;
+
+# Vars
+HOST_PATH=$(pwd)
+APP_PATH=$HOST_PATH/"_docker_webserver"
+
+# Clone or pull.
+if [ "$GITUPDATE" = "GITUPDATE" ]   ; then func_git   ; fi
+
+# Enter the directory.
+if [ ! -d "$APP_PATH" ]; then echo "Directory does not exist! ($APP_PATH)"; exit; fi
+cd _docker_webserver
+
+# Create or remove the Docker instance.
+if [ "$COMMAND" = "BUILDCREATESTART"    ]; then func_DOCKER_BUILDCREATESTART   ; exit; fi
+if [ "$COMMAND" = "STOPREMOVECONTAINER" ]; then func_DOCKER_STOPREMOVECONTAINER; exit; fi
+if [ "$COMMAND" = "START"               ]; then func_start; exit; fi
+if [ "$COMMAND" = "STOP"                ]; then func_stop ; exit; fi
+
+# Getting here means that an invalid COMMAND was used.
+echo "Specified COMMAND was not valid."
+
+echo
+echo "*************************"
+echo "COMMAND    :" $COMMAND
+echo "PORTNUMBER :" $PORTNUMBER
+echo "BRANCHNAME :" $BRANCHNAME
+echo "GITUPDATE  :" $GITUPDATE
+echo "*************************"
+echo
+
+exit

@@ -1,0 +1,44 @@
+#!/bin/bash
+
+HEIGHT=15
+WIDTH=300
+CHOICE_HEIGHT=4
+BACKTITLE="Docker Control"
+TITLE="Docker Control Options"
+MENU="Choose one of the following options:"
+
+OPTIONS_dialog=(
+ 0 "REMOTE: BUILDCREATESTART    8080 master GITUPDATE  "
+ 1 "LOCAL : START               8080 master NOGITUPDATE"
+ 2 "LOCAL : STOP                8080 master NOGITUPDATE"
+ 3 "LOCAL : STOPREMOVECONTAINER 8080 master NOGITUPDATE"
+)
+OPTIONS_cmds=(
+ "wget -O -  https://raw.githubusercontent.com/nicksen782/DOCKER_WEBSERVER/master/_install._sh | bash -s BUILDCREATESTART    8080 master GITUPDATE"
+ "bash _docker_webserver/_install._sh START               8080 master NOGITUPDATE"
+ "bash _docker_webserver/_install._sh STOP                8080 master NOGITUPDATE"
+ "bash _docker_webserver/_install._sh STOPREMOVECONTAINER 8080 master NOGITUPDATE"
+)
+
+CHOICE=$(dialog --clear \
+                --backtitle "$BACKTITLE" \
+                --title "$TITLE" \
+                --menu "$MENU" \
+                $HEIGHT $WIDTH $CHOICE_HEIGHT \
+                "${OPTIONS_dialog[@]}" \
+                2>&1 >/dev/tty)
+
+clear
+
+echo
+echo "*******************************"
+echo Running command:
+echo "  " ${OPTIONS_cmds[$((CHOICE))]}
+echo "*******************************"
+eval ${OPTIONS_cmds[$((CHOICE))]}
+echo
+
+echo
+echo "********************************************"
+read -p "Press [Enter] key to close this window..."
+echo "********************************************"
