@@ -4,6 +4,11 @@ FROM ubuntu:18.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=America/Detroit
 
+# These should be overridden with the --build-arg argument during build.
+# www-data by default gets uid 33 and gid 33.
+ARG HOST_USER_GID=33
+ARG HOST_USER_ID=33
+
 # Set active user.
 USER root
 
@@ -56,6 +61,7 @@ RUN \
 		libssl-dev                                   \
 		python                                       \
 		nodejs                                       \
+		ncdu                                         \
 		                                                         && \
 	echo ""                                                      && \
 	curl -L https://npmjs.org/install.sh | sh                    && \
@@ -74,6 +80,17 @@ RUN \
 	rm -rf /var/lib/apt/lists/*                                  && \
 	rm -rf /var/lib/{apt,dpkg,cache,log}/                        && \
 	echo " "
+
+# Change the UID and GID of the www-data (apache, 33:33) user to 1000:1000.
+# Find any files with the previous UID and/or GID and update.
+# Skip /proc, /sys, and /var/www/site.
+RUN \
+	old_gid=$(id -g www-data) && \
+	old_uid=$(id -u www-data) && \
+	groupmod -g $HOST_USER_GID www-data && \
+	usermod  -u $HOST_USER_ID  www-data && \
+	find / -path "/var/www/site" -prune -o -path "/sys" -prune -o -path "/proc" -prune -o -group $old_gid -exec chgrp -h www-data {} \; && \
+	find / -path "/var/www/site" -prune -o -path "/sys" -prune -o -path "/proc" -prune -o -user  $old_uid -exec chown -h www-data {} \;
 
 # Create the MOUNT directory
 RUN \

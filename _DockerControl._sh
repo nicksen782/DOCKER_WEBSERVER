@@ -2,22 +2,28 @@
 
 HEIGHT=15
 WIDTH=300
-CHOICE_HEIGHT=4
+CHOICE_HEIGHT=7
 BACKTITLE="Docker Control"
 TITLE="Docker Control Options"
 MENU="Choose one of the following options:"
 
 OPTIONS_dialog=(
- 0 "REMOTE: BUILDCREATESTART    8080 master GITUPDATE  "
+ 0 "ABORT"
  1 "LOCAL : START               8080 master NOGITUPDATE"
  2 "LOCAL : STOP                8080 master NOGITUPDATE"
  3 "LOCAL : STOPREMOVECONTAINER 8080 master NOGITUPDATE"
+ 4 "LOCAL : BUILDCREATESTART    8080 master NOGITUPDATE"
+ 5 "REMOTE: BUILDCREATESTART    8080 master NOGITUPDATE"
+ 6 "REMOTE: BUILDCREATESTART    8080 master GITUPDATE  "
 )
 OPTIONS_cmds=(
- "wget -O -  https://raw.githubusercontent.com/nicksen782/DOCKER_WEBSERVER/master/_install._sh | bash -s BUILDCREATESTART    8080 master GITUPDATE"
+ "echo \"Script aborted\""
  "bash _docker_webserver/_install._sh START               8080 master NOGITUPDATE"
  "bash _docker_webserver/_install._sh STOP                8080 master NOGITUPDATE"
  "bash _docker_webserver/_install._sh STOPREMOVECONTAINER 8080 master NOGITUPDATE"
+ "bash _docker_webserver/_install._sh BUILDCREATESTART    8080 master NOGITUPDATE"
+ "wget -O -  https://raw.githubusercontent.com/nicksen782/DOCKER_WEBSERVER/master/_install._sh | bash -s BUILDCREATESTART    8080 master NOGITUPDATE"
+ "wget -O -  https://raw.githubusercontent.com/nicksen782/DOCKER_WEBSERVER/master/_install._sh | bash -s BUILDCREATESTART    8080 master GITUPDATE"
 )
 
 CHOICE=$(dialog --clear \
